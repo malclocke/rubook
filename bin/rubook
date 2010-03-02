@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'contacts'
+
+config = {'cachefile' => '~/.rubook-cache.yml', 'cachetime' => 60}
+
+['/etc/rubook.yml','~/.rubook.yml','rubook.yml'].each do |conf_file|
+  abs_file_name = File.expand_path(conf_file)
+  next unless File.readable?(abs_file_name)
+  yml = File.open(abs_file_name) { |yf| YAML::load yf }
+  config.merge!(yml)
+end
+
+contacts = []
+
+cachefile = File.expand_path(config['cachefile'])
+
+if ! File.exists?(cachefile) or File.mtime(cachefile) < Time.now - (config['cachetime'].to_i * 60)
+  contacts = Contacts::Gmail.new(config['username'],config['password']).contacts
+  unless contacts.empty?
+    File.open(cachefile, 'w+') do |f|
+      f.write(YAML::dump(contacts))
+    end
+  end
+else
+  contacts = File.open(cachefile) { |yf| YAML::load yf }
+end
+
+matches = contacts.find_all do |contact| 
+  Regexp.new(ARGV[0],Regexp::IGNORECASE).match(contact[0])
+end
+
+if matches.empty?
+  puts "Not found"
+else
+  puts
+  matches.each do |contact|
+    puts contact.reverse.join("\t")
+  end
+end
