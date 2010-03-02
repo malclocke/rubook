@@ -12,6 +12,11 @@ config = {'cachefile' => '~/.rubook-cache.yml', 'cachetime' => 60}
   config.merge!(yml)
 end
 
+if config['username'].nil? or config['password'].nil?
+  $stderr.puts 'Err - username and password must be set'
+  exit 1
+end
+
 contacts = []
 
 cachefile = File.expand_path(config['cachefile'])
