@@ -3,7 +3,7 @@
 require 'rubygems'
 require 'contacts'
 
-config = {'cachefile' => '~/.rubook-cache.yml', 'cachetime' => 60}
+config = {'cachefile' => '~/.rubook-cache', 'cachetime' => 60}
 
 ['/etc/rubook.yml','~/.rubook.yml','rubook.yml'].each do |conf_file|
   abs_file_name = File.expand_path(conf_file)
@@ -25,11 +25,11 @@ if ! File.exists?(cachefile) or File.mtime(cachefile) < Time.now - (config['cach
   contacts = Contacts::Gmail.new(config['username'],config['password']).contacts
   unless contacts.empty?
     File.open(cachefile, 'w+') do |f|
-      f.write(YAML::dump(contacts))
+      f.write(Marshal.dump(contacts))
     end
   end
 else
-  contacts = File.open(cachefile) { |yf| YAML::load yf }
+  contacts = Marshal.load(File.open(cachefile))
 end
 
 matches = contacts.find_all do |contact| 
