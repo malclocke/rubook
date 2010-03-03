@@ -33,7 +33,8 @@ else
 end
 
 matches = contacts.find_all do |contact| 
-  Regexp.new(ARGV[0],Regexp::IGNORECASE).match(contact[0])
+  regexp = Regexp.new(ARGV[0],Regexp::IGNORECASE)
+  regexp.match(contact[0]) or regexp.match(contact[1])
 end
 
 if matches.empty?
