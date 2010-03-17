@@ -2,6 +2,9 @@
 
 require 'rubygems'
 require 'gdata'
+require 'mail'
+
+FEED_URL = 'https://www.google.com/m8/feeds/contacts/default/full'
 
 config = {'cachefile' => '~/.rubook-cache', 'cachetime' => 60}
 
@@ -17,40 +20,65 @@ if config['username'].nil? or config['password'].nil?
   exit 1
 end
 
-contacts = []
+client = GData::Client::Contacts.new
+client.clientlogin(config['username'], config['password'])
 
-cachefile = File.expand_path(config['cachefile'])
+if ARGV[0] == 'query'
 
-if ! File.exists?(cachefile) or File.mtime(cachefile) < Time.now - (config['cachetime'].to_i * 60)
-  client = GData::Client::Contacts.new
-  client.clientlogin(config['username'], config['password'])
-  feed = client.get('https://www.google.com/m8/feeds/contacts/default/full?max-results=1000').to_xml
-  feed.elements.to_a('entry').each do |entry|
-    entry.elements.each('gd:email') do |email|
-      contacts.push(
-        [entry.elements['title'].text, email.attribute('address').value]
-      )
+  contacts = []
+
+  cachefile = File.expand_path(config['cachefile'])
+
+  if ! File.exists?(cachefile) or File.mtime(cachefile) < Time.now - (config['cachetime'].to_i * 60)
+    feed = client.get(FEED_URL + '?max-results=1000').to_xml
+    feed.elements.to_a('entry').each do |entry|
+      entry.elements.each('gd:email') do |email|
+        contacts.push(
+          [entry.elements['title'].text, email.attribute('address').value]
+        )
+      end
+    end
+    unless contacts.empty?
+      File.open(cachefile, 'w+') do |f|
+        f.write(Marshal.dump(contacts))
+      end
+    end
+  else
+    contacts = Marshal.load(File.open(cachefile))
+  end
+
+  matches = contacts.find_all do |contact| 
+    regexp = Regexp.new(ARGV[1],Regexp::IGNORECASE)
+    regexp.match(contact[0]) or regexp.match(contact[1])
+  end
+
+  if matches.empty?
+    puts "Not found"
+  else
+    puts
+    matches.each do |contact|
+      puts contact.reverse.join("\t")
     end
   end
-  unless contacts.empty?
-    File.open(cachefile, 'w+') do |f|
-      f.write(Marshal.dump(contacts))
-    end
-  end
-else
-  contacts = Marshal.load(File.open(cachefile))
-end
 
-matches = contacts.find_all do |contact| 
-  regexp = Regexp.new(ARGV[0],Regexp::IGNORECASE)
-  regexp.match(contact[0]) or regexp.match(contact[1])
-end
+elsif ARGV[0] == 'add'
 
-if matches.empty?
-  puts "Not found"
-else
-  puts
-  matches.each do |contact|
-    puts contact.reverse.join("\t")
+  mail = Mail.new $stdin.read
+  from = mail.header['From']
+
+  unless from.nil? or from.display_names.nil? or from.addresses.nil?
+    entry = <<-EOT
+<atom:entry xmlns:atom='http://www.w3.org/2005/Atom'
+    xmlns:gd='http://schemas.google.com/g/2005'>
+  <atom:category scheme='http://schemas.google.com/g/2005#kind'
+    term='http://schemas.google.com/contact/2008#contact' />
+  <atom:title type="text">#{from.display_names}</atom:title>
+  <gd:email primary='true' address='#{from.addresses}'
+    rel='http://schemas.google.com/g/2005#home' />
+</atom:entry>
+EOT
+    client.post(FEED_URL, entry)
+    puts "Added #{mail.header['From']} to Google contacts"
   end
+
 end
