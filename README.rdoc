@@ -4,12 +4,19 @@ Rubook allows you to work with Google Contacts from Mutt.
 
 == Install
 
- # gem install contacts hpricot
- # cp sample_rubook.yml ~/.rubook.yml
+ git clone git://github.com/malclocke/rubook.git
+ gem install gdata mail
+ cp sample_rubook.yml ~/.rubook.yml
 
 Add the following to your ~/.muttrc
 
- # set query_command="/path/to/rubook '%s'"
+ set query_command="/path/to/rubook '%s'"
+ macro index a |'/path/to/rubook add'\n
+ macro pager a |'/path/to/rubook add'\n
 
 You should now be able to type part of an address or name into the 'To:' field
-when composing a message and have it autocomplete from your Google contacts.
+when composing a message and have it autocomplete from your Google contacts by
+typing ctrl+t 
+
+In the pager or index view, you can add the sender of the current message to
+your Google contacts by typing 'a'.
