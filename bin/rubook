@@ -34,7 +34,7 @@ if ARGV[0] == 'query'
     feed.elements.to_a('entry').each do |entry|
       entry.elements.each('gd:email') do |email|
         contacts.push(
-          [entry.elements['title'].text, email.attribute('address').value]
+          [entry.elements['title'].text || '', email.attribute('address').value]
         )
       end
     end
@@ -56,7 +56,7 @@ if ARGV[0] == 'query'
     puts "Not found"
   else
     puts
-    matches.each do |contact|
+    matches.sort_by{|m| m[0].downcase }.each do |contact|
       puts contact.reverse.join("\t")
     end
   end
